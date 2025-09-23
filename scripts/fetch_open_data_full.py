@@ -7,7 +7,7 @@ def get_full_open_data():
         "lon": 0.34,
         "exclude": "",  # On ne filtre rien pour tout récupérer
         "units": "metric",
-        "appid": "YOUR_API_KEY"
+        "appid": "112f0318e4939329bbbc221a79895cd6"
     }
 
     r = requests.get(url, params=params)
