@@ -1,3 +1,4 @@
-#requests
-#kafka-python
-#sqlite3
+confluent-kafka==2.3.0
+influxdb-client==1.38.0
+requests==2.31.0
+
