@@ -15,3 +15,5 @@ def get_open_data():
         "temperature": data["current"]["temp"],
         "pressure": data["current"]["pressure"]
     }
+    
+    
