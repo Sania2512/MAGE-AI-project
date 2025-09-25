@@ -32,7 +32,8 @@ SEND_INTERVAL = 5
 
 # Durées du cycle (en secondes)
 ACTIVE_DURATION = 5 * 60  # 5 minutes
-PAUSE_DURATION = 1 * 60   # 1 minute
+PAUSE_DURATION = 1 * 60  # 1 minute
+
 
 def update_temperature():
     """Met à jour la température avec des valeurs réalistes (60-80°C)"""
@@ -41,17 +42,20 @@ def update_temperature():
     # Ajoute des variations plus fines comme dans vos données
     return round(base_temp + random.uniform(-2.0, 2.0), 14)
 
+
 def update_pressure():
     """Met à jour la pression avec des valeurs réalistes (3-5 bar)"""
     # Génère des valeurs entre 3 et 5 bar avec haute précision
     base_pressure = random.uniform(3.0, 5.0)
     return round(base_pressure + random.uniform(-0.5, 0.5), 14)
 
+
 def update_vitesse():
     """Met à jour la vitesse avec des valeurs réalistes (600-1200 rpm)"""
     # Génère des valeurs entre 600 et 1200 rpm avec haute précision
     base_vitesse = random.uniform(600.0, 1200.0)
     return round(base_vitesse + random.uniform(-100.0, 100.0), 14)
+
 
 print("Le producteur est prêt...")
 
