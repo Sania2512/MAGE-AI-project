@@ -23,6 +23,7 @@ KAFKA_CONFIG = {
 # Intervalle de traitement (12 minutes en secondes)
 PROCESSING_INTERVAL = 1 * 60  # 12 minutes
 
+
 class KafkaToInfluxDB:
     def __init__(self):
         # Initialiser le client InfluxDB
@@ -41,14 +42,14 @@ class KafkaToInfluxDB:
         self.message_buffer = []
 
         print("✅ Kafka to InfluxDB consumer initialisé")
-        print(f"📊 Traitement des données toutes les {PROCESSING_INTERVAL/60} minutes")
+        print(f"📊 Traitement des données toutes les {PROCESSING_INTERVAL / 60} minutes")
 
     def collect_messages(self, duration_seconds):
         """Collecte les messages Kafka pendant une durée donnée"""
         start_time = time.time()
         messages_collected = 0
 
-        print(f"🔄 Début de la collecte des messages pour {duration_seconds/60:.1f} minutes...")
+        print(f"🔄 Début de la collecte des messages pour {duration_seconds / 60:.1f} minutes...")
 
         while time.time() - start_time < duration_seconds:
             try:
@@ -84,7 +85,7 @@ class KafkaToInfluxDB:
         return messages_collected
 
     def write_to_influxdb(self):
-        """Écrit tous les messages du buffer vers InfluxDB"""
+        """Écrit tous les messages du buffer vers InfluxDB avec structure tabulaire"""
         if not self.message_buffer:
             print("⚠️ Aucun message à écrire dans InfluxDB")
             return 0
@@ -118,16 +119,18 @@ class KafkaToInfluxDB:
                     print(f"❌ Type de timestamp non supporté: {type(timestamp)}")
                     continue
 
-                # Créer un point InfluxDB pour chaque message
-                point = Point("machine_data") \
+                # Créer un point unique avec toutes les données comme champs
+                # Cela créera une structure plus similaire à votre tableau Excel
+                point = Point("machine_readings") \
                     .tag("machine_id", data["machine_id"]) \
+                    .field("timestamp", timestamp) \
                     .field("temperature", float(data["temperature"])) \
-                    .field("pressure", float(data["pressure"])) \
+                    .field("pression", float(data["pressure"])) \
                     .field("vitesse", float(data["vitesse"])) \
                     .time(timestamp_ns)
 
                 points.append(point)
-                print(f"🔧 Point créé: {data['machine_id']} - T:{data['temperature']}°C - Time:{timestamp}")
+                print(f"🔧 Point créé: {data['machine_id']} - T:{data['temperature']}°C - P:{data['pressure']} - V:{data['vitesse']}")
 
             except Exception as e:
                 print(f"❌ Erreur lors de la création du point: {e}")
@@ -168,7 +171,7 @@ class KafkaToInfluxDB:
                     print("⚠️ Aucun message collecté pendant cette période")
 
                 cycle_duration = time.time() - cycle_start
-                print(f"⏱️ Cycle terminé en {cycle_duration/60:.2f} minutes")
+                print(f"⏱️ Cycle terminé en {cycle_duration / 60:.2f} minutes")
 
         except KeyboardInterrupt:
             print("\n🛑 Arrêt demandé par l'utilisateur")
@@ -185,6 +188,7 @@ class KafkaToInfluxDB:
         if hasattr(self, 'influx_client'):
             self.influx_client.close()
         print("✅ Nettoyage terminé")
+
 
 if __name__ == "__main__":
     kafka_to_influx = KafkaToInfluxDB()
