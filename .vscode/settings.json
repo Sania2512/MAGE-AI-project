@@ -1,0 +1,25 @@
+{
+    // Désactiver tous les diagnostics de Pylance
+    "python.analysis.typeCheckingMode": "off",
+    
+    // Limiter le mode diagnostique aux fichiers ouverts seulement
+    "python.analysis.diagnosticMode": "openFilesOnly",
+    
+    // Désactiver tous les inlay hints (indices de type)
+    "python.analysis.inlayHints.variableTypes": false,
+    "python.analysis.inlayHints.functionReturnTypes": false,
+    "python.analysis.inlayHints.callArgumentNames": "off",
+    "python.analysis.inlayHints.pytestParameters": false,
+    
+    // Désactiver les indices étiquetés
+    "python.analysis.disableTaggedHints": true,
+    
+    // Désactiver l'autocomplétion automatique des imports
+    "python.analysis.autoImportCompletions": false,
+    
+    // Désactiver les résumés de survol AI
+    "python.analysis.aiHoverSummaries": false,
+    
+    // Alternative : désactiver complètement Pylance
+    // "python.languageServer": "None"
+}
