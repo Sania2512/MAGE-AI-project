@@ -17,6 +17,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 import joblib
 import os
 from datetime import datetime
+import json
 
 # Variables globales
 SEQUENCE_LENGTH = 50
@@ -39,6 +40,48 @@ DENSE_UNITS = 16
 DROPOUT_RATE_1 = 0.2
 DROPOUT_RATE_2 = 0.2
 DROPOUT_RATE_3 = 0.1
+
+
+def collect_sensor_data_from_csv(csv_path):
+    """
+    Collecte les données capteurs depuis un CSV et les formate pour le prédicteur
+
+    Args:
+        csv_path (str): Chemin vers le fichier CSV des données capteurs
+
+    Returns:
+        list: Liste de dictionnaires formatés pour MaintenancePredictor
+    """
+    try:
+        df = pd.read_csv(csv_path)
+
+        # Vérifier les colonnes requises
+        required_cols = ['temperature', 'pression', 'vitesse']
+        if not all(col in df.columns for col in required_cols):
+            print(f"❌ Colonnes manquantes. Requis: {required_cols}")
+            print(f"   Disponibles: {list(df.columns)}")
+            return None
+
+        # Récupérer seulement les 50 dernières lignes
+        df_last_50 = df.tail(50)
+
+        # Convertir en format attendu
+        sensor_data = []
+        for _, row in df_last_50.iterrows():
+            data_point = {
+                'temperature': float(row['temperature']),
+                'pression': float(row['pression']),
+                'vitesse': float(row['vitesse'])
+            }
+            sensor_data.append(data_point)
+
+        print(
+            f"✅ {len(sensor_data)} points de données collectés (50 dernières lignes)")
+        return sensor_data
+
+    except Exception as e:
+        print(f"❌ Erreur lors de la collecte: {e}")
+    return None
 
 
 class MaintenancePredictor:
@@ -84,7 +127,7 @@ class MaintenancePredictor:
         # Buffer pour stocker les données historiques
         self.data_buffer = []
 
-    def predict_single(self, new_data):
+    def predict_sequency(self, new_data):
         """
         Prédiction sur un seul point de données
         new_data: dict avec keys ['temperature', 'pression', 'vitesse']
@@ -103,7 +146,7 @@ class MaintenancePredictor:
                 return {
                     'prediction': 0,
                     'probability': 0.0,
-                    'status': f'Collecte en cours ({len(self.data_buffer)}/{self.sequence_length})',
+                    'status': "Not enough measures in sequency",
                     'ready': False
                 }
 
@@ -147,102 +190,54 @@ class MaintenancePredictor:
             return "🔴 Critique"
 
 
-
 def main():
     # Test avec quelques exemples
-        # Créer 51 cas de test variés
-        test_cases = [
-            # Cas normaux clairs
-            {'temperature': 70, 'pression': 4.2, 'vitesse': 800},  # Normal
-            {'temperature': 65, 'pression': 3.8, 'vitesse': 920},  # Normal
-            {'temperature': 62, 'pression': 3.5, 'vitesse': 950},  # Normal
-            {'temperature': 67, 'pression': 3.6, 'vitesse': 900},  # Normal
-            {'temperature': 64, 'pression': 3.7, 'vitesse': 980},  # Normal
-            
-            # Cas de pannes clairs
-            {'temperature': 85, 'pression': 3.2, 'vitesse': 1100},  # Panne
-            {'temperature': 83, 'pression': 4.9, 'vitesse': 630},  # Panne
-            {'temperature': 80, 'pression': 5.0, 'vitesse': 650},  # Panne
-            {'temperature': 82, 'pression': 4.8, 'vitesse': 700},  # Panne
-            {'temperature': 81, 'pression': 4.7, 'vitesse': 680},  # Panne
-            
-            # Cas limites (température)
-            {'temperature': 55, 'pression': 3.6, 'vitesse': 920},  # Min normal
-            {'temperature': 73, 'pression': 3.9, 'vitesse': 900},  # Max normal
-            {'temperature': 76, 'pression': 4.6, 'vitesse': 700},  # Min panne
-            {'temperature': 84, 'pression': 4.8, 'vitesse': 650},  # Max panne
-            
-            # Cas limites (pression)
-            {'temperature': 65, 'pression': 3.42, 'vitesse': 950},  # Min normal
-            {'temperature': 67, 'pression': 4.3, 'vitesse': 900},   # Max normal
-            {'temperature': 80, 'pression': 4.6, 'vitesse': 670},   # Min panne
-            {'temperature': 81, 'pression': 4.98, 'vitesse': 650},  # Max panne
-            
-            # Cas limites (vitesse)
-            {'temperature': 64, 'pression': 3.5, 'vitesse': 600},   # Min normal
-            {'temperature': 66, 'pression': 3.7, 'vitesse': 1030},  # Max normal
-            {'temperature': 80, 'pression': 4.7, 'vitesse': 600},   # Min panne
-            {'temperature': 82, 'pression': 4.8, 'vitesse': 750},   # Typique panne
-            
-            # Cas ambigus
-            {'temperature': 74, 'pression': 4.4, 'vitesse': 800},   # Entre normal et panne
-            {'temperature': 76, 'pression': 4.0, 'vitesse': 880},   # Entre normal et panne
-            {'temperature': 70, 'pression': 4.5, 'vitesse': 750},   # Entre normal et panne
-            
-            # Plus de variations normales
-            {'temperature': 60, 'pression': 3.5, 'vitesse': 970},
-            {'temperature': 63, 'pression': 3.6, 'vitesse': 940},
-            {'temperature': 65, 'pression': 3.7, 'vitesse': 910},
-            {'temperature': 68, 'pression': 3.8, 'vitesse': 880},
-            {'temperature': 69, 'pression': 3.9, 'vitesse': 850},
-            
-            # Plus de variations pannes
-            {'temperature': 78, 'pression': 4.7, 'vitesse': 680},
-            {'temperature': 79, 'pression': 4.8, 'vitesse': 670},
-            {'temperature': 80, 'pression': 4.9, 'vitesse': 660},
-            {'temperature': 81, 'pression': 5.0, 'vitesse': 650},
-            {'temperature': 82, 'pression': 5.1, 'vitesse': 640},
-            
-            # Combinaisons extrêmes
-            {'temperature': 55, 'pression': 3.42, 'vitesse': 600},  # Tout minimum normal
-            {'temperature': 73, 'pression': 4.3, 'vitesse': 1030},  # Tout maximum normal
-            {'temperature': 76, 'pression': 4.6, 'vitesse': 600},   # Minimum panne
-            {'temperature': 84, 'pression': 4.98, 'vitesse': 750},  # Maximum panne
-            
-            # Cas vraiment ambigus (près de la frontière de décision)
-            {'temperature': 73, 'pression': 4.5, 'vitesse': 800},
-            {'temperature': 75, 'pression': 4.2, 'vitesse': 850},
-            {'temperature': 74, 'pression': 4.3, 'vitesse': 820},
-            {'temperature': 72, 'pression': 4.4, 'vitesse': 780},
-            {'temperature': 76, 'pression': 4.1, 'vitesse': 840},
-            
-            # Quelques cas supplémentaires normaux
-            {'temperature': 61, 'pression': 3.6, 'vitesse': 930},
-            {'temperature': 66, 'pression': 3.8, 'vitesse': 890},
-            {'temperature': 63, 'pression': 3.7, 'vitesse': 920},
-            
-            # Quelques cas supplémentaires de panne
-            {'temperature': 80, 'pression': 4.7, 'vitesse': 690},
-            {'temperature': 83, 'pression': 4.8, 'vitesse': 650},
-            {'temperature': 81, 'pression': 4.9, 'vitesse': 670}
-        ]
+    # Créer 51 cas de test variés
 
-        try:
-            # 7. Test du modèle déployé
-            print("\n7️⃣ TEST DU MODÈLE DÉPLOYÉ")
-            predictor = MaintenancePredictor()
+    data = collect_sensor_data_from_csv(os.path.join("dataset_machine.csv"))
+    try:
+        # 7. Test du modèle déployé
+        print("\n7️INFERENCE DU MODELE DEPLOYE")
+        predictor = MaintenancePredictor()
 
-            print("🧪 Test avec données d'exemple:")
-            for i, data in enumerate(test_cases, 1):
-                result = predictor.predict_single(data)
-                print(
-                    f"   Test {i}: {data} → {result['status']} (Prob: {result['probability']:.3f})")
+        print("🧪 Test avec données d'exemple:")
+        for i, data in enumerate(data, 1):
+            result = predictor.predict_sequency(data)
+            
+        print(f"\n{result['status']} (Prob: {result['probability']:.3f})")
+
+        # Sauvegarder les données d'entrée si une panne est détectée
+
+        if result['prediction'] == 1: #resultat panne
+            # Créer le DataFrame avec les données du buffer
+            input_data = pd.DataFrame(predictor.data_buffer, columns=predictor.features)
+
+            # Ajouter les timestamps depuis le CSV original
+            df_original = pd.read_csv(os.path.join("dataset_machine.csv"))
+            
+            # Récupérer les 50 derniers timestamps
+            timestamps = df_original['_time'].tail(50).tolist()
+            
+            # Ajouter la colonne timestamp au DataFrame
+            input_data['timestamp'] = timestamps
+            
+            # Réorganiser les colonnes pour avoir timestamp en premier
+            input_data = input_data[['timestamp'] + predictor.features]
+            
+            # Nom du fichier avec timestamp
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"input_inference_{timestamp}.csv"
+            
+            # Sauvegarder le CSV
+            input_data.to_csv(filename, index=False)
+            print(f"💾 Données d'entrée sauvegardées: {filename}")
 
             print("\n✅ PIPELINE TERMINÉ AVEC SUCCÈS!")
 
-        except Exception as e:
-            print(f"\n❌ ERREUR DANS LE PIPELINE: {e}")
-            raise
+    except Exception as e:
+        print(f"\n❌ ERREUR DANS LE PIPELINE: {e}")
+        raise
+
 
 if __name__ == "__main__":
     main()
