@@ -18,7 +18,7 @@ class TrafficLightDashboard:
         Args:
             status (str): 'OK' = Vert, 'WARNING' = Jaune, 'DANGER' = Rouge
         """
-        if status == 'OK':
+        if status ==0:
             st.markdown("""
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 30px; height: 30px; border-radius: 50%; background-color: #00FF00; border: 2px solid #333;"></div>
@@ -38,7 +38,7 @@ class TrafficLightDashboard:
             </div>
             """, unsafe_allow_html=True)
 
-        elif status == 'DANGER':
+        elif status == 1:
             st.markdown("""
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 30px; height: 30px; border-radius: 50%; background-color: #444; border: 2px solid #333;"></div>
@@ -55,7 +55,7 @@ class TrafficLightDashboard:
         Args:
             status_ok (bool): True = Vert (OK), False = Rouge (DANGER)
         """
-        if status_ok:
+        if status_ok==1:
             self.display_traffic_light('DANGER')
         else:
             self.display_traffic_light('OK')
@@ -88,4 +88,6 @@ class TrafficLightDashboard:
 
 
 if __name__ == "__main__":
-    # Test de la classe
+    dashboard=TrafficLightDashboard()
+    dashboard.display_status_color(1)
+

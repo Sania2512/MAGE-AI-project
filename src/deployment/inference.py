@@ -212,7 +212,7 @@ def main():
         # Sauvegarder les données d'entrée si une panne est détectée
 
         if result['prediction'] == 1: #resultat panne
-            traffic_light_dashboard.display_traffic_light(1)
+            traffic_light_dashboard.display_status_color(1)
             # Créer le DataFrame avec les données du buffer
             input_data = pd.DataFrame(predictor.data_buffer, columns=predictor.features)
 
@@ -238,7 +238,7 @@ def main():
 
             print("\n✅ PIPELINE TERMINÉ AVEC SUCCÈS!")
         else:
-            traffic_light_dashboard.display_traffic_light(0)
+            traffic_light_dashboard.display_status_color(0)
 
     except Exception as e:
         print(f"\n❌ ERREUR DANS LE PIPELINE: {e}")
