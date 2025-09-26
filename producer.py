@@ -1,8 +1,10 @@
-import time
 import json
 import random
-from confluent_kafka import Producer
+import threading
+import time
 from datetime import datetime
+
+from confluent_kafka import Producer
 
 # Configuration du producteur
 conf = {'bootstrap.servers': 'localhost:9092'}
@@ -10,92 +12,167 @@ producer = Producer(**conf)
 
 topic = 'donnees-machines'
 
-# Variables pour stocker les dernières valeurs des capteurs
-current_data = {
-    'machine_id': 'machine-01',
+# Stockage des dernières valeurs de chaque capteur
+current_values = {
     'temperature': 0,
     'pressure': 0,
-    'vitesse': 0,
-    'timestamp': time.time()
+    'vitesse': 0
 }
 
-# Variables pour gérer les intervalles de mise à jour
-last_temp_update = 0
-last_pressure_update = 0
-last_vitesse_update = 0
+# Verrous pour la synchronisation des threads
+values_lock = threading.Lock()
 
-# Intervalles de mise à jour (en secondes)
-TEMP_INTERVAL = 10
-PRESSURE_INTERVAL = 15
-VITESSE_INTERVAL = 20
-SEND_INTERVAL = 5
+# Variables de contrôle
+is_active_phase = False
+cycle_start_time = 0
+
+# Intervalles des capteurs (en secondes)
+TEMP_SENSOR_INTERVAL = 10
+PRESSURE_SENSOR_INTERVAL = 15
+VITESSE_SENSOR_INTERVAL = 20
 
 # Durées du cycle (en secondes)
 ACTIVE_DURATION = 5 * 60  # 5 minutes
 PAUSE_DURATION = 1 * 60  # 1 minute
 
+# Intervalle d'envoi sur Kafka (5 secondes)
+KAFKA_SEND_INTERVAL = 5
 
-def update_temperature():
-    """Met à jour la température avec des valeurs réalistes (60-80°C)"""
-    # Génère des valeurs entre 60 et 80°C avec plus de précision
+
+def generate_realistic_temperature():
+    """Génère une température réaliste (60-98°C)"""
     base_temp = random.uniform(60.0, 98.0)
-    # Ajoute des variations plus fines comme dans vos données
-    return round(base_temp + random.uniform(-2.0, 2.0), 14)
+    return round(base_temp + random.uniform(-2.0, 2.0), 2)
 
 
-def update_pressure():
-    """Met à jour la pression avec des valeurs réalistes (3-5 bar)"""
-    # Génère des valeurs entre 3 et 5 bar avec haute précision
+def generate_realistic_pressure():
+    """Génère une pression réaliste (3-5 bar)"""
     base_pressure = random.uniform(3.0, 5.0)
-    return round(base_pressure + random.uniform(-0.5, 0.5), 14)
+    return round(base_pressure + random.uniform(-0.5, 0.5), 2)
 
 
-def update_vitesse():
-    """Met à jour la vitesse avec des valeurs réalistes (600-1200 rpm)"""
-    # Génère des valeurs entre 600 et 1200 rpm avec haute précision
+def generate_realistic_vitesse():
+    """Génère une vitesse réaliste (600-1200 rpm)"""
     base_vitesse = random.uniform(600.0, 1200.0)
-    return round(base_vitesse + random.uniform(-100.0, 100.0), 14)
+    return round(base_vitesse + random.uniform(-100.0, 100.0), 2)
 
 
-print("Le producteur est prêt...")
+def temperature_sensor():
+    """Simule le capteur de température qui met à jour sa valeur toutes les 10 secondes"""
+    while True:
+        if is_active_phase:
+            temp_value = generate_realistic_temperature()
 
-while True:
-    cycle_start = time.time()
+            with values_lock:
+                current_values['temperature'] = temp_value
 
-    # Phase active : 5 minutes d'envoi de données
-    print(f"=== Début de la phase active (5 minutes) ===")
+            print(f"📊 Capteur température: {temp_value}°C (mise à jour)")
 
-    while time.time() - cycle_start < ACTIVE_DURATION:
-        current_time = time.time()
+        time.sleep(TEMP_SENSOR_INTERVAL)
 
-        # Mise à jour de la température toutes les 10 secondes
-        if current_time - last_temp_update >= TEMP_INTERVAL:
-            current_data['temperature'] = update_temperature()
-            last_temp_update = current_time
-            print(f"Nouvelle température: {current_data['temperature']}°C")
 
-        # Mise à jour de la pression toutes les 15 secondes
-        if current_time - last_pressure_update >= PRESSURE_INTERVAL:
-            current_data['pressure'] = update_pressure()
-            last_pressure_update = current_time
-            print(f"Nouvelle pression: {current_data['pressure']} bar")
+def pressure_sensor():
+    """Simule le capteur de pression qui met à jour sa valeur toutes les 15 secondes"""
+    while True:
+        if is_active_phase:
+            pressure_value = generate_realistic_pressure()
 
-        # Mise à jour de la vitesse toutes les 20 secondes
-        if current_time - last_vitesse_update >= VITESSE_INTERVAL:
-            current_data['vitesse'] = update_vitesse()
-            last_vitesse_update = current_time
-            print(f"Nouvelle vitesse: {current_data['vitesse']} rpm")
+            with values_lock:
+                current_values['pressure'] = pressure_value
 
-        # Mise à jour du timestamp et envoi du message
-        current_data['timestamp'] = datetime.fromtimestamp(current_time).strftime('%Y-%m-%d %H:%M:%S.%f')
+            print(f"📊 Capteur pression: {pressure_value} bar (mise à jour)")
 
-        # Envoyer le message avec les dernières valeurs disponibles
-        producer.produce(topic, key=current_data['machine_id'], value=json.dumps(current_data))
-        print(f"Envoi des données : {current_data}")
+        time.sleep(PRESSURE_SENSOR_INTERVAL)
 
-        producer.flush()
-        time.sleep(SEND_INTERVAL)  # Attendre 5 secondes avant le prochain envoi
 
-    # Phase de pause : 1 minute
-    print(f"=== Début de la phase de pause (1 minute) ===")
-    time.sleep(PAUSE_DURATION)
+def vitesse_sensor():
+    """Simule le capteur de vitesse qui met à jour sa valeur toutes les 20 secondes"""
+    while True:
+        if is_active_phase:
+            vitesse_value = generate_realistic_vitesse()
+
+            with values_lock:
+                current_values['vitesse'] = vitesse_value
+
+            print(f"📊 Capteur vitesse: {vitesse_value} rpm (mise à jour)")
+
+        time.sleep(VITESSE_SENSOR_INTERVAL)
+
+
+def send_data_to_kafka():
+    """Envoie les valeurs actuelles sur Kafka toutes les 5 secondes"""
+    while True:
+        if is_active_phase:
+            current_time = time.time()
+
+            with values_lock:
+                # Récupérer les valeurs actuelles (conservées si pas de mise à jour)
+                temp = current_values['temperature']
+                pressure = current_values['pressure']
+                vitesse = current_values['vitesse']
+
+            # Créer le message à envoyer sur Kafka
+            message = {
+                'machine_id': 'machine-01',
+                'temperature': temp,
+                'pressure': pressure,
+                'vitesse': vitesse,
+                'timestamp': datetime.fromtimestamp(current_time).strftime('%Y-%m-%d %H:%M:%S.%f')
+            }
+
+            # Envoyer sur Kafka
+            producer.produce(topic, key=message['machine_id'], value=json.dumps(message))
+            producer.flush()
+
+            print(f"🚀 Envoi sur Kafka:")
+            print(f"   Température: {temp}°C")
+            print(f"   Pression: {pressure} bar")
+            print(f"   Vitesse: {vitesse} rpm")
+            print(f"   Message: {message}")
+            print("-" * 80)
+
+        time.sleep(KAFKA_SEND_INTERVAL)
+
+
+def main():
+    global is_active_phase, cycle_start_time
+
+    print("🔧 Démarrage du système de simulation avec conservation des valeurs...")
+    print("📊 Configuration:")
+    print(f"   - Capteur température: mise à jour toutes les {TEMP_SENSOR_INTERVAL}s")
+    print(f"   - Capteur pression: mise à jour toutes les {PRESSURE_SENSOR_INTERVAL}s")
+    print(f"   - Capteur vitesse: mise à jour toutes les {VITESSE_SENSOR_INTERVAL}s")
+    print(f"   - Envoi sur Kafka: toutes les {KAFKA_SEND_INTERVAL}s (avec conservation des valeurs)")
+    print(f"   - Phase active: {ACTIVE_DURATION // 60} minutes")
+    print(f"   - Phase pause: {PAUSE_DURATION // 60} minute")
+    print("=" * 80)
+
+    # Démarrer les threads des capteurs
+    temp_thread = threading.Thread(target=temperature_sensor, daemon=True)
+    pressure_thread = threading.Thread(target=pressure_sensor, daemon=True)
+    vitesse_thread = threading.Thread(target=vitesse_sensor, daemon=True)
+    kafka_thread = threading.Thread(target=send_data_to_kafka, daemon=True)
+
+    temp_thread.start()
+    pressure_thread.start()
+    vitesse_thread.start()
+    kafka_thread.start()
+
+    # Boucle principale de gestion des cycles
+    while True:
+        # Phase active
+        print(f"🟢 === DÉBUT PHASE ACTIVE ({ACTIVE_DURATION // 60} minutes) ===")
+        is_active_phase = True
+        cycle_start_time = time.time()
+
+        time.sleep(ACTIVE_DURATION)
+
+        # Phase de pause
+        print(f"🟡 === DÉBUT PHASE PAUSE ({PAUSE_DURATION // 60} minute) ===")
+        is_active_phase = False
+
+        time.sleep(PAUSE_DURATION)
+
+
+if __name__ == "__main__":
+    main()
