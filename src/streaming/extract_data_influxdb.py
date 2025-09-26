@@ -17,7 +17,7 @@ client = InfluxDBClient(
 # 🔍 Requête Flux adaptée
 query = f'''
 from(bucket: "{INFLUXDB_BUCKET}")
-  |> range(start: -14m)
+  |> range(start: -10m)
   |> filter(fn: (r) => r["_measurement"] == "machine_readings")
   |> filter(fn: (r) => r["machine_id"] == "machine-01")
   |> filter(fn: (r) => r["_field"] == "pression" or r["_field"] == "temperature" or r["_field"] == "vitesse")

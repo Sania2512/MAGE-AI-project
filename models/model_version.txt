@@ -1,0 +1,6 @@
+Model: lstm_maintenance_model
+Date: 2025-09-26 05:24:31
+Version: 1.0
+Accuracy: 0.579
+F1-Score: 0.529
+F1-Score: 0.592
