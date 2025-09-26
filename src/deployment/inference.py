@@ -24,7 +24,7 @@ SEQUENCE_LENGTH = 50
 FEATURES = ['temperature', 'pression', 'vitesse']
 MODEL_NAME = "lstm_maintenance_model"
 MODELS_DIR = "models"
-THRESHOLD = 0.50
+THRESHOLD = 0.30
 RANDOM_SEED = 42
 
 # Paramètres d'entraînement
@@ -115,7 +115,8 @@ class MaintenancePredictor:
         self.metadata = joblib.load(self.metadata_path)
         self.sequence_length = self.metadata['sequence_length']
         self.features = self.metadata['features']
-        self.threshold = self.metadata['threshold']
+        self.threshold = THRESHOLD
+
 
         print(f"✅ Configuration chargée:")
         print(f"   - Modèle: {self.metadata['model_name']}")
