@@ -226,7 +226,7 @@ def main():
             
             # Nom du fichier avec timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"input_inference_{timestamp}.csv"
+            filename = f"input_inference.csv"
             
             # Sauvegarder le CSV
             input_data.to_csv(filename, index=False)
