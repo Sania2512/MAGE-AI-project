@@ -10,10 +10,12 @@ INFLUXDB_ORG = "machines-org"
 INFLUXDB_BUCKET = "machines-data"
 
 # 📥 Chargement du fichier CSV avec prédictions
-df = pd.read_csv("input_inference.csv")  # doit contenir 'timestamp', 'temperature', 'pression', 'vitesse', 'panne'
+# doit contenir 'timestamp', 'temperature', 'pression', 'vitesse', 'panne'
+df = pd.read_csv("input_inference.csv")
 
 # 📡 Connexion InfluxDB
-client = InfluxDBClient(url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
+client = InfluxDBClient(
+    url=INFLUXDB_URL, token=INFLUXDB_TOKEN, org=INFLUXDB_ORG)
 write_api = client.write_api(write_options=SYNCHRONOUS)
 
 points = []
@@ -26,7 +28,7 @@ for _, row in df.iterrows():
         timestamp_ns = int(dt.timestamp() * 1_000_000_000)
 
         # 🔧 Création du point
-        point = Point("machine_readings") \
+        point = Point("Prediction") \
             .tag("machine_id", "machine-01") \
             .field("temperature", float(row["temperature"])) \
             .field("pression", float(row["pression"])) \
@@ -34,7 +36,8 @@ for _, row in df.iterrows():
             .time(timestamp_ns)
 
         points.append(point)
-        print(f"📥 Point ajouté : T={row['temperature']}°C, P={row['pression']}, V={row['vitesse']}, panne={row['panne']}")
+        print(
+            f"📥 Point ajouté : T={row['temperature']}°C, P={row['pression']}, V={row['vitesse']}")
 
     except Exception as e:
         print(f"❌ Erreur sur la ligne : {row}")
