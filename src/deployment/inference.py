@@ -19,6 +19,8 @@ import os
 from datetime import datetime
 import json
 
+from streamlit_dashboard import TrafficLightDashboard
+
 # Variables globales
 SEQUENCE_LENGTH = 50
 FEATURES = ['temperature', 'pression', 'vitesse']
@@ -195,6 +197,7 @@ def main():
     # Créer 51 cas de test variés
 
     data = collect_sensor_data_from_csv(os.path.join("dataset_machine.csv"))
+    traffic_light_dashboard = TrafficLightDashboard()
     try:
         # 7. Test du modèle déployé
         print("\n7️INFERENCE DU MODELE DEPLOYE")
@@ -209,6 +212,7 @@ def main():
         # Sauvegarder les données d'entrée si une panne est détectée
 
         if result['prediction'] == 1: #resultat panne
+            traffic_light_dashboard.display_traffic_light(1)
             # Créer le DataFrame avec les données du buffer
             input_data = pd.DataFrame(predictor.data_buffer, columns=predictor.features)
 
@@ -233,6 +237,8 @@ def main():
             print(f"💾 Données d'entrée sauvegardées: {filename}")
 
             print("\n✅ PIPELINE TERMINÉ AVEC SUCCÈS!")
+        else:
+            traffic_light_dashboard.display_traffic_light(0)
 
     except Exception as e:
         print(f"\n❌ ERREUR DANS LE PIPELINE: {e}")

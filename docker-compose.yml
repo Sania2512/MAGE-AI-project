@@ -91,6 +91,26 @@ services:
       timeout: 5s
       retries: 5
 
+  # Service Streamlit Dashboard Simple
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: streamlit-dashboard
+    depends_on:
+      influxdb:
+        condition: service_healthy
+    ports:
+      - "8501:8501"
+    environment:
+      INFLUXDB_URL: "http://influxdb:8086"
+      INFLUXDB_TOKEN: "my-super-secret-auth-token"
+      INFLUXDB_ORG: "machines-org"
+      INFLUXDB_BUCKET: "machines-data"
+    volumes:
+      - ./streamlit_dashboard.py:/app/streamlit_dashboard.py
+    restart: unless-stopped
+
 volumes:
   influxdb-data:
   grafana-data:
