@@ -28,7 +28,7 @@ class TrafficLightDashboard:
             </div>
             """, unsafe_allow_html=True)
 
-        elif status == 'WARNING':
+        elif status == 2:
             st.markdown("""
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 30px; height: 30px; border-radius: 50%; background-color: #444; border: 2px solid #333;"></div>
@@ -60,34 +60,26 @@ class TrafficLightDashboard:
         else:
             self.display_traffic_light('OK')
 
-    def show_demo(self):
+    def show_demo(self,status_ok):
         """
         Affiche une démonstration des feux tricolores
         """
         st.title("🚦 Dashboard avec Feux Tricolores")
 
-        st.subheader("Tests des différents états:")
+        if status_ok==0:
+            st.write("**État OK (Vert):**")
+            self.display_traffic_light(status_ok)
+        
+        elif status_ok==2:
+            st.write("**État WARNING (Jaune):**")
+            self.display_traffic_light(status_ok)
 
-        st.write("**État OK (Vert):**")
-        self.display_traffic_light('OK')
-
-        st.write("**État WARNING (Jaune):**")
-        self.display_traffic_light('WARNING')
-
-        st.write("**État DANGER (Rouge):**")
-        self.display_traffic_light('DANGER')
-
-        st.markdown("---")
-        st.subheader("Test avec boolean:")
-
-        st.write("**True → Vert:**")
-        self.display_status_color(True)
-
-        st.write("**False → Rouge:**")
-        self.display_status_color(False)
+        else:
+            st.write("**État DANGER (Rouge):**")
+            self.display_traffic_light(status_ok)
 
 
 if __name__ == "__main__":
     dashboard=TrafficLightDashboard()
-    dashboard.display_status_color(1)
+    dashboard.show_demo(st.session_state.prediction)
 

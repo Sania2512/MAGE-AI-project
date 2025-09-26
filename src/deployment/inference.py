@@ -18,6 +18,8 @@ import joblib
 import os
 from datetime import datetime
 import json
+import streamlit as st
+
 
 from streamlit_dashboard import TrafficLightDashboard
 
@@ -192,6 +194,40 @@ class MaintenancePredictor:
             return "🔴 Critique"
 
 
+def run_streamlit_dashboard():
+    """
+    Lance le dashboard Streamlit avec les résultats de prédiction
+    """
+    import subprocess
+    import sys
+    import time
+    
+    try:
+        print("🚀 Lancement du dashboard Streamlit...")
+        
+        # Commande pour lancer Streamlit
+        cmd = [
+            sys.executable, "-m", "streamlit", "run", 
+            "streamlit_dashboard.py", 
+            "--server.port=8501",
+            "--server.headless=true"
+        ]
+        
+        # Lancer Streamlit en arrière-plan
+        process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        # Attendre un peu pour que Streamlit démarre
+        time.sleep(3)
+        
+        print("✅ Dashboard Streamlit lancé sur: http://localhost:8501")
+        print("🔗 Ouvrez ce lien dans votre navigateur pour voir le dashboard")
+        
+        return process
+        
+    except Exception as e:
+        print(f"❌ Erreur lors du lancement de Streamlit: {e}")
+        return None
+
 def main():
     # Test avec quelques exemples
     # Créer 51 cas de test variés
@@ -209,7 +245,15 @@ def main():
             
         print(f"\n{result['status']} (Prob: {result['probability']:.3f})")
 
-        # Sauvegarder les données d'entrée si une panne est détectée
+
+        # Corriger la condition et initialiser session_state
+        if "prediction" not in st.session_state:
+            st.session_state.prediction = result['prediction']
+        else:
+            st.session_state.prediction = result['prediction']
+
+        # Lancer le dashboard Streamlit après la prédiction
+        streamlit_process = run_streamlit_dashboard()
 
         if result['prediction'] == 1: #resultat panne
             traffic_light_dashboard.display_status_color(1)
@@ -230,7 +274,7 @@ def main():
             
             # Nom du fichier avec timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"input_inference_{timestamp}.csv"
+            filename = f"input_inference.csv"
             
             # Sauvegarder le CSV
             input_data.to_csv(filename, index=False)
