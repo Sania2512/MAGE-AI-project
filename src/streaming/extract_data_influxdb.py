@@ -43,4 +43,4 @@ while True:
         print(f"❌ Erreur lors de l'export : {e}")
 
     # ⏱️ Attendre 1 minute avant la prochaine exportation
-    time.sleep(120)
+    time.sleep(10)

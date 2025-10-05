@@ -333,6 +333,7 @@ def save_trained_model(model, scaler, sequence_length, metrics, model_name=MODEL
         'metadata_path': metadata_path
     }
 
+
 def main():
     """
     Fonction principale pour entraîner et déployer le modèle
@@ -356,19 +357,22 @@ def main():
 
         # 4. Entraînement
         print("\n4️⃣ ENTRAÎNEMENT DU MODÈLE")
-        history,X_val, y_val = train_lstm_model(lstm_model, X_sequences, y_sequences)
+        history, X_val, y_val = train_lstm_model(
+            lstm_model, X_sequences, y_sequences)
 
         # 5. Évaluation
         print("\n5️⃣ ÉVALUATION DU MODÈLE")
-        y_pred_proba, y_pred, metrics = evaluate_lstm_model(lstm_model, X_val, y_val)
+        y_pred_proba, y_pred, metrics = evaluate_lstm_model(
+            lstm_model, X_val, y_val)
 
         # 6. Sauvegarde pour déploiement
         print("\n6️⃣ SAUVEGARDE POUR DÉPLOIEMENT")
         save_trained_model(lstm_model, scaler, SEQUENCE_LENGTH, metrics)
 
     except Exception as e:
-            print(f"\n❌ ERREUR DANS LE PIPELINE: {e}")
-            raise
+        print(f"\n❌ ERREUR DANS LE PIPELINE: {e}")
+        raise
+
 
 if __name__ == "__main__":
     main()
