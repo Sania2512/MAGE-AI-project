@@ -18,6 +18,9 @@ import joblib
 import os
 from datetime import datetime
 import json
+import streamlit as st
+from streaming.model_to_influx_db import ModelToInfluxDB
+
 
 from streamlit_dashboard import TrafficLightDashboard
 
@@ -192,12 +195,64 @@ class MaintenancePredictor:
             return "🔴 Critique"
 
 
+def run_streamlit_dashboard():
+    """
+    Lance le dashboard Streamlit avec les résultats de prédiction
+    """
+    import subprocess
+    import sys
+    import time
+    
+    try:
+        print("🚀 Lancement du dashboard Streamlit...")
+        
+        # Commande pour lancer Streamlit
+        cmd = [
+            sys.executable, "-m", "streamlit", "run", 
+            "streamlit_dashboard.py", 
+            "--server.port=8501",
+            "--server.headless=true"
+        ]
+        
+        # Lancer Streamlit dans un nouveau terminal
+        if os.name == 'nt':  # Windows
+            process = subprocess.Popen(['start', 'cmd', '/k'] + cmd, shell=True)
+        else:  # Linux/macOS
+            # Essayer différents terminaux
+            terminals = ['gnome-terminal', 'xterm', 'konsole', 'terminator']
+            process = None
+            for terminal in terminals:
+                try:
+                    if terminal == 'gnome-terminal':
+                        process = subprocess.Popen([terminal, '--', *cmd])
+                    else:
+                        process = subprocess.Popen([terminal, '-e'] + [' '.join(cmd)])
+                        break
+                except FileNotFoundError:
+                    continue
+            
+            if process is None:
+                print("⚠️ Aucun terminal trouvé, lancement en arrière-plan...")
+                process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            
+        # Attendre un peu pour que Streamlit démarre
+        time.sleep(3)
+        
+        print("✅ Dashboard Streamlit lancé sur: http://localhost:8501")
+        print("🔗 Ouvrez ce lien dans votre navigateur pour voir le dashboard")
+        
+        return process
+        
+    except Exception as e:
+        print(f"❌ Erreur lors du lancement de Streamlit: {e}")
+        return None
+
 def main():
     # Test avec quelques exemples
     # Créer 51 cas de test variés
 
     data = collect_sensor_data_from_csv(os.path.join("dataset_machine.csv"))
-    traffic_light_dashboard = TrafficLightDashboard()
+    move_to_influx=ModelToInfluxDB()
     try:
         # 7. Test du modèle déployé
         print("\n7️INFERENCE DU MODELE DEPLOYE")
@@ -209,10 +264,16 @@ def main():
             
         print(f"\n{result['status']} (Prob: {result['probability']:.3f})")
 
-        # Sauvegarder les données d'entrée si une panne est détectée
+        # Corriger la condition et initialiser session_state
+        if "prediction" not in st.session_state:
+            st.session_state.prediction = result['prediction']
+        else:
+            st.session_state.prediction = result['prediction']
+
+        # Lancer le dashboard Streamlit après la prédiction
+        streamlit_process = run_streamlit_dashboard()
 
         if result['prediction'] == 1: #resultat panne
-            traffic_light_dashboard.display_traffic_light(1)
             # Créer le DataFrame avec les données du buffer
             input_data = pd.DataFrame(predictor.data_buffer, columns=predictor.features)
 
@@ -228,17 +289,26 @@ def main():
             # Réorganiser les colonnes pour avoir timestamp en premier
             input_data = input_data[['timestamp'] + predictor.features]
             
-            # Nom du fichier avec timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"input_inference_{timestamp}.csv"
+            # Nom du fichier avec 
+            filename = f"input_inference.csv"
             
             # Sauvegarder le CSV
             input_data.to_csv(filename, index=False)
             print(f"💾 Données d'entrée sauvegardées: {filename}")
 
+            #envoyer a influx 
+            move_to_influx.process_csv_to_influxdb()
+
             print("\n✅ PIPELINE TERMINÉ AVEC SUCCÈS!")
-        else:
-            traffic_light_dashboard.display_traffic_light(0)
+
+        # Optionnel: Garder le script en vie pour que Streamlit reste actif
+        if streamlit_process:
+            print("\n⏸️  Appuyez sur Ctrl+C pour arrêter le dashboard...")
+            try:
+                streamlit_process.wait()
+            except KeyboardInterrupt:
+                print("\n🛑 Arrêt du dashboard...")
+                streamlit_process.terminate()
 
     except Exception as e:
         print(f"\n❌ ERREUR DANS LE PIPELINE: {e}")

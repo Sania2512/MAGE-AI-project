@@ -1,5 +1,6 @@
-from influxdb_client import InfluxDBClient
+import time
 import pandas as pd
+from influxdb_client import InfluxDBClient
 
 # 🔐 Configuration InfluxDB
 INFLUXDB_URL = "http://localhost:8086"
@@ -14,8 +15,7 @@ client = InfluxDBClient(
     org=INFLUXDB_ORG
 )
 
-# 🔍 Requête Flux adaptée
-query = f'''
+query_template = f'''
 from(bucket: "{INFLUXDB_BUCKET}")
   |> range(start: -10m)
   |> filter(fn: (r) => r["_measurement"] == "machine_readings")
@@ -24,13 +24,23 @@ from(bucket: "{INFLUXDB_BUCKET}")
   |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
 '''
 
-# 📥 Exécution de la requête
-df = client.query_api().query_data_frame(query)
+print("⏳ Démarrage de l'export automatique toutes les 1 minute...")
 
-# 🧼 Nettoyage des colonnes inutiles
-df = df[["_time", "temperature", "pression", "vitesse"]]
-df = df.dropna(subset=["temperature", "pression", "vitesse"])
+while True:
+    try:
+        # 📥 Exécution de la requête
+        df = client.query_api().query_data_frame(query_template)
 
-# 💾 Export en CSV
-df.to_csv("dataset_machine.csv", index=False)
-print("✅ Données exportées dans dataset_machine.csv")
+        # 🧼 Nettoyage des colonnes inutiles
+        df = df[["_time", "temperature", "pression", "vitesse"]]
+        df = df.dropna(subset=["temperature", "pression", "vitesse"])
+
+        # 💾 Export en CSV
+        df.to_csv("dataset_machine.csv", index=False)
+        print("✅ Données exportées dans dataset_machine.csv")
+
+    except Exception as e:
+        print(f"❌ Erreur lors de l'export : {e}")
+
+    # ⏱️ Attendre 1 minute avant la prochaine exportation
+    time.sleep(10)
